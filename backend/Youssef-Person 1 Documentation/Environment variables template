@@ -1,0 +1,19 @@
+# Environment Variables Template
+# Copy this file and name it .env then modify the values
+
+# Server Port
+PORT=3000
+
+# MySQL Database Configuration
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=YOUR_MYSQL_PASSWORD_HERE
+DB_NAME=security_project
+
+# JWT Secret Key (change to a strong random key in production)
+JWT_SECRET=your_jwt_secret_key_here_change_this_in_production
+
+# ⚠️ Important Notes:
+# 1. Do not commit .env file to Git
+# 2. Change JWT_SECRET to a strong random value
+# 3. Make sure MySQL password is correct
