@@ -12,8 +12,14 @@ const app = express();
 connectDB();
 
 // Middleware
+// Request logging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} from ${req.headers.origin}`);
+  next();
+});
+
 app.use(cors({
-  origin: ["http://localhost:3000"],
+  origin: true,
   credentials: true
 }));
 app.use(express.json());

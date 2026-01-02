@@ -43,17 +43,16 @@ const listFiles = async (req, res) => {
              // or remove this check if admins should only see their own files in this view.
         }
 
-        const files = await File.find(query).sort({ createdAt: -1 });
+        const files = await File.find(query).sort({ created_at: -1 }).populate('owner_id', 'username email');
 
-        // Transform to match frontend expectation if needed, or just return
+        // Transform to match frontend expectation
         const fileList = files.map(file => ({
-            id: file._id,
-            name: file.original_name,
+            _id: file._id,
+            filename: file.original_name, // Frontend expects 'filename'
             size: file.size,
-            uploadDate: file.createdAt,
-            // History could be populated if it's a separate model or embedded
-            // Assuming history is not yet fully implemented in model, we mock/leave empty or use createdAt
-            history: [{ action: 'Uploaded', date: file.createdAt }] 
+            uploadedBy: file.owner_id, // Populated user object
+            uploadDate: file.created_at, // Schema uses 'created_at'
+            history: [{ action: 'Uploaded', date: file.created_at }] 
         }));
 
         res.json(fileList);
@@ -92,14 +91,16 @@ const downloadFile = async (req, res) => {
         }
 
         const filePath = path.join(__dirname, '../uploads', file.stored_name);
+        console.log('Attempting to download file from:', filePath);
 
         if (!fs.existsSync(filePath)) {
+            console.error('File not found at path:', filePath);
             return res.status(404).json({ message: 'File not found on server' });
         }
 
         res.download(filePath, file.original_name);
     } catch (error) {
-        console.error(error);
+        console.error('Download error:', error);
         res.status(500).json({ message: 'Server error during file download' });
     }
 };

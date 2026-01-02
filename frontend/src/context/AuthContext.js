@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useState, useEffect, useContext } from 'react';
-import api from '../services/api';
+import authService from '../services/authService';
 import { useRouter } from 'next/navigation';
 
 const AuthContext = createContext();
@@ -16,10 +16,8 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-            // Depending on backend, we might verify token or just set state if we stored user info
-            // For now, let's assume valid token means logged in, or fetch /auth/me if exists
-             const { data } = await api.get('/auth/me');
-             setUser(data);
+             const user = await authService.getMe();
+             setUser(user);
         } catch (error) {
           console.error("Auth check failed", error);
           localStorage.removeItem('token');
@@ -34,28 +32,24 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const { data } = await api.post('/auth/login', { email, password });
+      const data = await authService.login({ email, password });
       localStorage.setItem('token', data.token);
-      // Assuming login returns user object + token
-      // If it only returns token, we might need to fetch user separately
-      // Based on backend code: res.json({ token, user: { id, name, role } }) (Need to verify backend response)
-      // If backend only returns token, we need to decode or fetch me.
-      // Let's check backend auth controller to be sure.
-      // For now assume standard structure.
+      
+      // If backend sends user object on login, use it. Otherwise fetch me.
       if (data.user) {
           setUser(data.user);
       } else {
-             // Fetch me
-             const meRes = await api.get('/auth/me'); // We need to wait for interceptor to pick up token?
-             // Actually interceptor reads from localStorage, so we set it above.
-             await new Promise(resolve => setTimeout(resolve, 50)); // Small delay might be needed or not
-             // But simpler is to rely on next request
-             setUser(meRes.data);
+             const user = await authService.getCurrentUser();
+             setUser(user);
       }
       
       router.push('/dashboard');
       return { success: true };
     } catch (error) {
+        // authService might return full error or just data. 
+        // Our service returns response.data directly. 
+        // If promise rejects in service (which api interceptor might do), we catch it here.
+        // The error handling in API interceptor returns Promise.reject(error).
         throw error.response?.data?.message || 'Login failed';
     }
   };

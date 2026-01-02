@@ -1,48 +1,54 @@
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
 const User = require('../models/User');
-
-// Generate JWT
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET || 'secret', {
-        expiresIn: '30d',
-    });
-};
 
 // @desc    Authenticate a user
 // @route   POST /api/auth/login
 // @access  Public
-const loginUser = async (req, res) => {
-    // Frontend sends 'email' or 'username' but auth.service sends first arg as 'email' property
-    // To support both, we check if 'email' from body is actually a username or email.
-    // Or we accept an 'identifier' field.
-    // Given the current mismatch, the frontend sends { email: "superadmin" } if user types superadmin.
-    // So we treat req.body.email as "identifier".
-    
-    // We destruct 'email' but treat it as identifier, or check 'username' too if sent.
-    const { email, username, password } = req.body;
-    const identifier = email || username;
-
+exports.login = async (req, res) => {
     try {
-        // Check for user by email OR username
-        const user = await User.findOne({ 
-            $or: [{ email: identifier }, { username: identifier }] 
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Please provide email/username and password' });
+        }
+
+        // Find user by email or username, populate role
+        const user = await User.findOne({
+            $or: [{ email: email }, { username: email }]
         }).populate('role');
 
-        if (user && (await bcrypt.compare(password, user.password))) {
-            res.json({
-                _id: user.id,
+        if (!user) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        // Check password
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        // Generate JWT
+        const token = jwt.sign(
+            { 
+                userId: user._id,
+                role: user.role.role_name
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.json({
+            token,
+            user: {
+                id: user._id,
                 username: user.username,
                 email: user.email,
-                role: user.role.role_name,
-                token: generateToken(user._id),
-            });
-        } else {
-            res.status(400).json({ message: 'Invalid credentials' });
-        }
+                role: user.role
+            }
+        });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Login error:', error);
+        res.status(500).json({ message: 'Server error during login' });
     }
 };
 
@@ -54,6 +60,6 @@ const getMe = async (req, res) => {
 };
 
 module.exports = {
-    loginUser,
+    login,
     getMe,
 };

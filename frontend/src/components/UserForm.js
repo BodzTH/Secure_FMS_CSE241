@@ -1,18 +1,21 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import api from '@/services/api';
-import { X } from 'lucide-react';
+import adminService from '@/services/adminService';
+import { useAuth } from '@/context/AuthContext';
+import { X, Eye, EyeOff } from 'lucide-react';
 
 export default function UserForm({ isOpen, onClose, userToEdit, onSuccess }) {
+    const { user } = useAuth();
     const [formData, setFormData] = useState({
         username: '',
         email: '',
         password: '',
-        role: 'User'
+        role_name: 'user'
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [showPassword, setShowPassword] = useState(false); // New state for password visibility
 
     useEffect(() => {
         if (userToEdit) {
@@ -20,17 +23,18 @@ export default function UserForm({ isOpen, onClose, userToEdit, onSuccess }) {
                 username: userToEdit.username || '',
                 email: userToEdit.email || '',
                 password: '', // Don't populate password
-                role: userToEdit.role || 'User'
+                role_name: userToEdit.role?.role_name || userToEdit.role || 'user'
             });
         } else {
             setFormData({
                 username: '',
                 email: '',
                 password: '',
-                role: 'User'
+                role_name: 'user'
             });
         }
         setError(null);
+        setShowPassword(false); // Reset password visibility on form open/edit
     }, [userToEdit, isOpen]);
 
     const handleSubmit = async (e) => {
@@ -38,16 +42,34 @@ export default function UserForm({ isOpen, onClose, userToEdit, onSuccess }) {
         setLoading(true);
         setError(null);
 
+        // Validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            setError("Invalid email format");
+            setLoading(false);
+            return;
+        }
+
+        if (!userToEdit || formData.password) {
+            // Password validation (Create: required, Edit: only if provided)
+            const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
+            if (!passwordRegex.test(formData.password)) {
+                setError("Password must be at least 8 chars, with 1 number & 1 special char (!@#$%^&*)");
+                setLoading(false);
+                return;
+            }
+        }
+
         try {
             if (userToEdit) {
                 // Update
                 const updateData = { ...formData };
                 if (!updateData.password) delete updateData.password; // Don't send empty password if not changing
                 
-                await api.patch(`/admin/update-user/${userToEdit._id}`, updateData);
+                await adminService.updateUser(userToEdit._id, updateData);
             } else {
                 // Create
-                await api.post('/admin/create-user', formData);
+                await adminService.createUser(formData);
             }
             onSuccess();
             onClose();
@@ -105,24 +127,39 @@ export default function UserForm({ isOpen, onClose, userToEdit, onSuccess }) {
                         <label className="block text-sm font-medium text-slate-700">
                             Password {userToEdit && <span className="text-slate-400 font-normal">(Leave blank to keep current)</span>}
                         </label>
-                        <input
-                            type="password"
-                            required={!userToEdit}
-                            value={formData.password}
-                            onChange={(e) => setFormData({...formData, password: e.target.value})}
-                            className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-slate-900"
-                        />
+                        <div className="relative">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                required={!userToEdit}
+                                value={formData.password}
+                                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 pr-10 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-slate-900"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                            >
+                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-slate-700">Role</label>
                         <select
-                            value={formData.role}
-                            onChange={(e) => setFormData({...formData, role: e.target.value})}
+                            value={formData.role_name}
+                            onChange={(e) => setFormData({...formData, role_name: e.target.value})}
                             className="mt-1 block w-full border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-slate-900"
                         >
-                            <option value="User">User</option>
-                            <option value="Admin">Admin</option>
-                            <option value="Superadmin">Superadmin</option>
+                            <option value="user">User</option>
+                            
+                            {/* Only show Admin/Superadmin options if current user is Superadmin */}
+                            {user?.role?.role_name === 'superadmin' && (
+                                <>
+                                    <option value="admin">Admin</option>
+                                    <option value="superadmin">Superadmin</option>
+                                </>
+                            )}
                         </select>
                     </div>
 

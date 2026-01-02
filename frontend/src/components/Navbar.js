@@ -12,14 +12,15 @@ export default function Navbar() {
   if (!user) return null;
 
   return (
-    <nav className="bg-white shadow">
+    <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-md shadow-sm border-b border-slate-200/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <span className="text-xl font-bold text-slate-800">Secure FMS</span>
+                <img className="h-10 w-auto filter drop-shadow-md" src="/secure_fms_logo.png" alt="Secure FMS Logo" />
+                <span className="ml-3 font-bold text-xl tracking-tight text-slate-800">Secure FMS</span>
             </div>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+            <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
               <Link
                 href="/dashboard"
                 className={`${
@@ -31,7 +32,7 @@ export default function Navbar() {
                 <FileText className="mr-2" size={18} />
                 Files
               </Link>
-              {(user.role === 'Superadmin' || user.role === 'Admin') && (
+              {(user.role?.role_name === 'superadmin' || user.role === 'superadmin' || user.role?.role_name === 'admin' || user.role === 'admin') && (
                 <Link
                   href="/admin"
                   className={`${
@@ -41,7 +42,7 @@ export default function Navbar() {
                   } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
                 >
                   <Users className="mr-2" size={18} />
-                  Admin
+                  Users
                 </Link>
               )}
             </div>

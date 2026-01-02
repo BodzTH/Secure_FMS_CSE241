@@ -13,10 +13,7 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
     if (!loading) {
       if (!user) {
         router.push('/login');
-      } else if (adminOnly && user.role !== 'Superadmin' && user.role !== 'Admin') {
-         // Adjust role check based on backend response
-         // Backend Role.js might have 'role_name' or similar, user obect from 'getMe' usually has 'role' field
-         // Assuming user.role is the role name (e.g. 'Superadmin')
+      } else if (adminOnly && user.role?.role_name !== 'superadmin' && user.role !== 'superadmin' && user.role?.role_name !== 'admin' && user.role !== 'admin') {
          router.push('/dashboard');
       }
     }
@@ -30,7 +27,7 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
     return null;
   }
   
-  if (adminOnly && user.role !== 'Superadmin' && user.role !== 'Admin') {
+  if (adminOnly && user.role?.role_name !== 'superadmin' && user.role !== 'superadmin' && user.role?.role_name !== 'admin' && user.role !== 'admin') {
       return null;
   }
 

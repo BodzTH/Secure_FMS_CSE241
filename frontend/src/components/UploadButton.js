@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from 'react';
-import api from '@/services/api';
+import fileService from '@/services/fileService';
 import { Upload, X } from 'lucide-react';
 
-export default function UploadButton({ onUploadSuccess }) {
+export default function UploadButton({ onUploadSuccess, onError }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState(null); // Keep local error for modal display too if desired, or remove.
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
@@ -29,17 +29,15 @@ export default function UploadButton({ onUploadSuccess }) {
         setError(null);
 
         try {
-            await api.post('/files/upload', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            await fileService.uploadFile(formData);
             setIsModalOpen(false);
             setFile(null);
             if (onUploadSuccess) onUploadSuccess();
         } catch (err) {
             console.error("Upload failed", err);
-            setError(err.response?.data?.message || "Upload failed");
+            const msg = err.response?.data?.message || "Upload failed";
+            setError(msg);
+            if (onError) onError(msg);
         } finally {
             setUploading(false);
         }
