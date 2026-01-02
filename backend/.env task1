@@ -1,7 +1,0 @@
-PORT=3000
-MONGO_URI=mongodb://localhost:27017/secure_fms
-JWT_SECRET=your_super_secret_jwt_key_change_this_in_production_12345
-# Generate a 32-byte hex key for encryption. 
-# You can generate one in node by running: crypto.randomBytes(32).toString('hex')
-ENCRYPTION_KEY=23d4d3a6829a23cdbd80dd9ba1bef4d306b6d61e3c28361081802145dbc999da
-
