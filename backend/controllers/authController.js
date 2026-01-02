@@ -13,12 +13,21 @@ const generateToken = (id) => {
 // @route   POST /api/auth/login
 // @access  Public
 const loginUser = async (req, res) => {
-    const { email, password } = req.body;
+    // Frontend sends 'email' or 'username' but auth.service sends first arg as 'email' property
+    // To support both, we check if 'email' from body is actually a username or email.
+    // Or we accept an 'identifier' field.
+    // Given the current mismatch, the frontend sends { email: "superadmin" } if user types superadmin.
+    // So we treat req.body.email as "identifier".
+    
+    // We destruct 'email' but treat it as identifier, or check 'username' too if sent.
+    const { email, username, password } = req.body;
+    const identifier = email || username;
 
     try {
-        // Check for user email
-        // Populate role so we can return it or use it
-        const user = await User.findOne({ email }).populate('role');
+        // Check for user by email OR username
+        const user = await User.findOne({ 
+            $or: [{ email: identifier }, { username: identifier }] 
+        }).populate('role');
 
         if (user && (await bcrypt.compare(password, user.password))) {
             res.json({

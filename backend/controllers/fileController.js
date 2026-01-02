@@ -27,6 +27,42 @@ const uploadFile = async (req, res) => {
     }
 };
 
+// @desc    List all files for user
+// @route   GET /api/files
+// @access  Private
+const listFiles = async (req, res) => {
+    try {
+        let query = { owner_id: req.user._id };
+
+        // If admin, maybe allow seeing all files? Or just their own?
+        // For now, let's keep it scoped to owner unless specifically requested otherwise
+        // If we want admin to see all, we can check role.
+        if (req.user.role && (req.user.role.role_name === 'admin' || req.user.role.role_name === 'superadmin')) {
+             // Optional: Admin view all files logic could go here
+             // For now, let's just return their own files to keep dashboard clean, 
+             // or remove this check if admins should only see their own files in this view.
+        }
+
+        const files = await File.find(query).sort({ createdAt: -1 });
+
+        // Transform to match frontend expectation if needed, or just return
+        const fileList = files.map(file => ({
+            id: file._id,
+            name: file.original_name,
+            size: file.size,
+            uploadDate: file.createdAt,
+            // History could be populated if it's a separate model or embedded
+            // Assuming history is not yet fully implemented in model, we mock/leave empty or use createdAt
+            history: [{ action: 'Uploaded', date: file.createdAt }] 
+        }));
+
+        res.json(fileList);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error retrieving files' });
+    }
+};
+
 const path = require('path');
 const fs = require('fs');
 
@@ -106,5 +142,6 @@ const deleteFile = async (req, res) => {
 module.exports = {
     uploadFile,
     downloadFile,
-    deleteFile
+    deleteFile,
+    listFiles
 };
