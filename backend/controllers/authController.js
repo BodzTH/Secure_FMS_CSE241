@@ -1,16 +1,15 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const User = require('../models/User');
-const { sendLoginOTPEmail, sendPasswordResetEmail } = require('../utils/emailService');
+const { sendLoginOTPEmail } = require('../utils/emailService');
 
-// In-memory OTP stores (in production, use Redis or database)
+// In-memory OTP store
 const loginOtpStore = new Map();
-const resetOtpStore = new Map();
 
 // OTP configuration
 const OTP_LENGTH = 6;
 const OTP_EXPIRY_MINUTES = 5;
-const RESET_OTP_EXPIRY_MINUTES = 10;
 
 // Generate a secure random OTP
 const generateOTP = () => {
@@ -31,22 +30,17 @@ setInterval(() => {
             loginOtpStore.delete(email);
         }
     }
-    for (const [email, data] of resetOtpStore.entries()) {
-        if (data.expiresAt < now) {
-            resetOtpStore.delete(email);
-        }
-    }
 }, 60000);
 
-// @desc    Request login OTP (Step 1: Email only, no password)
+// @desc    Request login OTP (Step 1: Email only)
 // @route   POST /api/auth/login
 // @access  Public
 exports.login = async (req, res) => {
     try {
-        const { email } = req.body;
+        const { email, password } = req.body;
 
-        if (!email) {
-            return res.status(400).json({ message: 'Please provide email' });
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Please provide email and password' });
         }
 
         // Find user by email or username
@@ -55,15 +49,20 @@ exports.login = async (req, res) => {
         }).populate('role');
 
         if (!user) {
-            return res.status(401).json({ message: 'No account found with this email' });
+            return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        // Check if user is active
+        // Check password
+        const isMatch = await user.matchPassword(password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
         if (!user.is_active) {
             return res.status(401).json({ message: 'Account is deactivated. Please contact administrator.' });
         }
 
-        // Rate limiting - don't allow requests within 30 seconds
+        // Rate limiting
         const existingOTP = loginOtpStore.get(user.email);
         if (existingOTP) {
             const timeSinceLastSend = Date.now() - (existingOTP.expiresAt - OTP_EXPIRY_MINUTES * 60 * 1000);
@@ -79,19 +78,23 @@ exports.login = async (req, res) => {
         const otp = generateOTP();
         const expiresAt = Date.now() + (OTP_EXPIRY_MINUTES * 60 * 1000);
 
-        // Store OTP
+        // Hash OTP before storing
+        const salt = await bcrypt.genSalt(10);
+        const otpHash = await bcrypt.hash(otp, salt);
+
+        // Store HASHED OTP
         loginOtpStore.set(user.email, {
-            otp,
+            otpHash, // Storing hash instead of plain OTP
             expiresAt,
             userId: user._id,
             username: user.username,
             attempts: 0
         });
 
-        // Send OTP email
+        // Send PLAIN OTP via email
         try {
             await sendLoginOTPEmail(user.email, otp, user.username);
-            console.log(`Login OTP sent to ${user.email}`);
+            console.log(`Login OTP sent to ${user.email} (Stored as hash)`);
         } catch (emailError) {
             console.error('Failed to send login OTP:', emailError);
             loginOtpStore.delete(user.email);
@@ -142,15 +145,17 @@ exports.verifyOTP = async (req, res) => {
             return res.status(429).json({ message: 'Too many failed attempts. Please request a new code.' });
         }
 
-        // Verify OTP
-        if (otpData.otp !== otp) {
+        // Verify OTP against HASH
+        const isMatch = await bcrypt.compare(otp, otpData.otpHash);
+
+        if (!isMatch) {
             return res.status(400).json({ 
                 message: 'Invalid code. Please try again.',
                 attemptsRemaining: 5 - otpData.attempts
             });
         }
 
-        // OTP is valid - delete it from store
+        // OTP is valid - delete it from store immediately
         loginOtpStore.delete(email);
 
         // Get user for token generation
@@ -219,8 +224,12 @@ exports.resendOTP = async (req, res) => {
         const otp = generateOTP();
         const expiresAt = Date.now() + (OTP_EXPIRY_MINUTES * 60 * 1000);
 
+        // Hash OTP
+        const salt = await bcrypt.genSalt(10);
+        const otpHash = await bcrypt.hash(otp, salt);
+
         loginOtpStore.set(email, {
-            otp,
+            otpHash,
             expiresAt,
             userId: user._id,
             username: user.username,
@@ -229,7 +238,7 @@ exports.resendOTP = async (req, res) => {
 
         try {
             await sendLoginOTPEmail(email, otp, user.username);
-            console.log(`Login OTP resent to ${email}`);
+            console.log(`Login OTP resent to ${email} (Stored as hash)`);
         } catch (emailError) {
             console.error('Failed to resend OTP:', emailError);
             return res.status(500).json({ message: 'Failed to send email. Please try again.' });
@@ -241,8 +250,6 @@ exports.resendOTP = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
-
-
 
 // @desc    Get user data
 // @route   GET /api/auth/me

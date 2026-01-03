@@ -31,12 +31,12 @@ export const AuthProvider = ({ children }) => {
     checkUser();
   }, []);
 
-  // Step 1: Request OTP (email only)
-  const requestOTP = async (email) => {
+  // Step 1: Request OTP (email + password)
+  const requestOTP = async (email, password) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await authService.login(email);
+      const data = await authService.login(email, password);
       setIsLoading(false);
       return { otpRequired: true, email: data.email };
     } catch (err) {
