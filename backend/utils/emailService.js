@@ -66,6 +66,5 @@ const sendLoginOTPEmail = async (email, otp, username) => {
 
 
 module.exports = {
-    sendLoginOTPEmail,
-    sendPasswordResetEmail
+    sendLoginOTPEmail
 };

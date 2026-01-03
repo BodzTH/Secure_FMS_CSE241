@@ -1,9 +1,9 @@
 import api from './api';
 
 const authService = {
-    // Step 1: Request login OTP (email only)
-    login: async (email) => {
-        const response = await api.post('/auth/login', { email });
+    // Step 1: Request login OTP (email + password)
+    login: async (email, password) => {
+        const response = await api.post('/auth/login', { email, password });
         return response.data;
     },
 

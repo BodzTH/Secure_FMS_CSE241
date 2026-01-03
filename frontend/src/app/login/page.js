@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Mail } from 'lucide-react';
-import Link from 'next/link';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import OTPInput from '@/components/OTPInput';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [otpStep, setOtpStep] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [otpError, setOtpError] = useState('');
@@ -17,7 +18,7 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const result = await requestOTP(email);
+      const result = await requestOTP(email, password);
       if (result.otpRequired) {
         setUserEmail(result.email);
         setOtpStep(true);
@@ -46,7 +47,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleBackToEmail = () => {
+  const handleBackToLogin = () => {
     setOtpStep(false);
     setUserEmail('');
     setOtpError('');
@@ -73,10 +74,10 @@ export default function LoginPage() {
             <img src="/secure_fms_logo.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">
-            {otpStep ? 'Enter Code' : 'Welcome Back'}
+            {otpStep ? 'Verification' : 'Welcome Back'}
           </h1>
           <p className="text-slate-300 mt-2">
-            {otpStep ? 'Check your email for the verification code' : 'Sign in with your email'}
+            {otpStep ? 'Enter the code sent to your email' : 'Sign in to your secure workspace'}
           </p>
         </div>
 
@@ -91,14 +92,14 @@ export default function LoginPage() {
               loading={isLoading}
             />
             <button
-              onClick={handleBackToEmail}
+              onClick={handleBackToLogin}
               className="w-full mt-4 py-3 px-4 text-sm font-medium text-slate-400 hover:text-white transition-colors"
             >
-              ← Use different email
+              ← Back to Login
             </button>
           </>
         ) : (
-          /* Email Form */
+          /* Email + Password Form */
           <>
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-lg mb-6 backdrop-blur-sm text-sm">
@@ -108,13 +109,13 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Email or Username</label>
                 <div className="relative group">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-400 transition-colors">
                     <Mail size={20} />
                   </span>
                   <input
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -124,16 +125,38 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
+                <div className="relative group">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-400 transition-colors">
+                    <Lock size={20} />
+                  </span>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="block w-full pl-10 pr-12 py-3 border border-slate-600 rounded-xl bg-slate-800/50 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white transition-colors focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={isLoading}
                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 disabled:bg-blue-800 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
               >
-                {isLoading ? 'Sending Code...' : 'Continue with Email'}
+                {isLoading ? 'Verifying...' : 'Sign In'}
               </button>
             </form>
-
-
           </>
         )}
       </div>
