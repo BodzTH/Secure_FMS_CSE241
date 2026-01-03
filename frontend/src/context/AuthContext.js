@@ -9,6 +9,8 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -20,7 +22,6 @@ export const AuthProvider = ({ children }) => {
              setUser(user);
         } catch (error) {
           console.error("Auth check failed", error);
-          // Clear invalid token (including 401 errors)
           localStorage.removeItem('token');
           setUser(null);
         }
@@ -31,29 +32,29 @@ export const AuthProvider = ({ children }) => {
     checkUser();
   }, []);
 
+  // Login with credentials (direct auth)
   const login = async (email, password) => {
+    setIsLoading(true);
+    setError(null);
     try {
       const data = await authService.login(email, password);
+      setIsLoading(false);
+      
       localStorage.setItem('token', data.token);
-      
-      // If backend sends user object on login, use it. Otherwise fetch me.
       if (data.user) {
-          setUser(data.user);
-      } else {
-             const user = await authService.getCurrentUser();
-             setUser(user);
+        setUser(data.user);
       }
-      
       router.push('/dashboard');
       return { success: true };
-    } catch (error) {
-        // authService might return full error or just data. 
-        // Our service returns response.data directly. 
-        // If promise rejects in service (which api interceptor might do), we catch it here.
-        // The error handling in API interceptor returns Promise.reject(error).
-        throw error.response?.data?.message || 'Login failed';
+    } catch (err) {
+      setIsLoading(false);
+      const errorMessage = err.response?.data?.message || err.message || 'Login failed';
+      setError(errorMessage);
+      throw errorMessage;
     }
   };
+
+  const clearError = () => setError(null);
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -62,7 +63,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      loading,
+      isLoading,
+      error,
+      clearError
+    }}>
       {children}
     </AuthContext.Provider>
   );
