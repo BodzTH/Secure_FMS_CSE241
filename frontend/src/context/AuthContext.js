@@ -18,8 +18,8 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-             const user = await authService.getMe();
-             setUser(user);
+          const user = await authService.getMe();
+          setUser(user);
         } catch (error) {
           console.error("Auth check failed", error);
           localStorage.removeItem('token');
@@ -28,27 +28,55 @@ export const AuthProvider = ({ children }) => {
       }
       setLoading(false);
     };
-
     checkUser();
   }, []);
 
-  // Login with credentials (direct auth)
-  const login = async (email, password) => {
+  // Step 1: Request OTP (email only)
+  const requestOTP = async (email) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await authService.login(email, password);
+      const data = await authService.login(email);
       setIsLoading(false);
-      
+      return { otpRequired: true, email: data.email };
+    } catch (err) {
+      setIsLoading(false);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to send code';
+      setError(errorMessage);
+      throw errorMessage;
+    }
+  };
+
+  // Step 2: Verify OTP and complete login
+  const verifyOTP = async (email, otp) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await authService.verifyOTP(email, otp);
+      setIsLoading(false);
       localStorage.setItem('token', data.token);
-      if (data.user) {
-        setUser(data.user);
-      }
+      setUser(data.user);
       router.push('/dashboard');
       return { success: true };
     } catch (err) {
       setIsLoading(false);
-      const errorMessage = err.response?.data?.message || err.message || 'Login failed';
+      const errorMessage = err.response?.data?.message || err.message || 'Verification failed';
+      setError(errorMessage);
+      throw errorMessage;
+    }
+  };
+
+  // Resend OTP
+  const resendOTP = async (email) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await authService.resendOTP(email);
+      setIsLoading(false);
+      return { success: true, message: data.message };
+    } catch (err) {
+      setIsLoading(false);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to resend';
       setError(errorMessage);
       throw errorMessage;
     }
@@ -65,7 +93,9 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{ 
       user, 
-      login, 
+      requestOTP,
+      verifyOTP,
+      resendOTP,
       logout, 
       loading,
       isLoading,

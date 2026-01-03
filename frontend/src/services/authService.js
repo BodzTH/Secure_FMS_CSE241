@@ -1,20 +1,25 @@
 import api from './api';
 
 const authService = {
-    login: async (email, password) => {
-        const response = await api.post('/auth/login', { email, password });
+    // Step 1: Request login OTP (email only)
+    login: async (email) => {
+        const response = await api.post('/auth/login', { email });
         return response.data;
     },
 
-    forgotPassword: async (email) => {
-        const response = await api.post('/auth/forgot-password', { email });
+    // Step 2: Verify OTP and get token
+    verifyOTP: async (email, otp) => {
+        const response = await api.post('/auth/verify-otp', { email, otp });
         return response.data;
     },
 
-    resetPassword: async (email, otp, newPassword) => {
-        const response = await api.post('/auth/reset-password', { email, otp, newPassword });
+    // Resend login OTP
+    resendOTP: async (email) => {
+        const response = await api.post('/auth/resend-otp', { email });
         return response.data;
     },
+
+
 
     getMe: async () => {
         const response = await api.get('/auth/me');
