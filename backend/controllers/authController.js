@@ -22,7 +22,7 @@ exports.login = async (req, res) => {
         }
 
         // Check password
-        const isMatch = await user.comparePassword(password);
+        const isMatch = await user.matchPassword(password);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
@@ -47,19 +47,15 @@ exports.login = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ message: 'Server error during login' });
+        console.error('Login error:', error.message);
+        console.error('Full error:', error);
+        res.status(500).json({ message: 'Server error during login', error: error.message });
     }
 };
 
 // @desc    Get user data (Test Endpoint)
 // @route   GET /api/auth/me
 // @access  Private
-const getMe = async (req, res) => {
+exports.getMe = async (req, res) => {
     res.status(200).json(req.user);
-};
-
-module.exports = {
-    login,
-    getMe,
 };

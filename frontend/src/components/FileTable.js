@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import fileService from '@/services/fileService';
 import { Download, Trash2, FileText } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
+import { useAuth } from '@/context/AuthContext';
 
 export default function FileTable({ refreshTrigger, showToast }) {
+    const { user } = useAuth();
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [fileToDelete, setFileToDelete] = useState(null);
@@ -22,8 +24,13 @@ export default function FileTable({ refreshTrigger, showToast }) {
     };
 
     useEffect(() => {
-        fetchFiles();
-    }, [refreshTrigger]);
+        // Only fetch files if user is authenticated
+        if (user) {
+            fetchFiles();
+        } else {
+            setLoading(false);
+        }
+    }, [refreshTrigger, user]);
 
     const handleDownload = async (fileId, fileName) => {
         try {

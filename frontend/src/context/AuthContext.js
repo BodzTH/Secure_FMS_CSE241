@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }) => {
              setUser(user);
         } catch (error) {
           console.error("Auth check failed", error);
+          // Clear invalid token (including 401 errors)
           localStorage.removeItem('token');
           setUser(null);
         }
@@ -32,7 +33,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const data = await authService.login({ email, password });
+      const data = await authService.login(email, password);
       localStorage.setItem('token', data.token);
       
       // If backend sends user object on login, use it. Otherwise fetch me.

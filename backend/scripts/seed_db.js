@@ -14,6 +14,15 @@ const seedDB = async () => {
         await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/secure_fms');
         console.log('✅ Connected.');
 
+        // Clear all existing data
+        console.log('🗑️  Clearing all existing data...');
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        for (const collection of collections) {
+            await mongoose.connection.db.dropCollection(collection.name);
+            console.log(`   ✅ Dropped collection: ${collection.name}`);
+        }
+        console.log('✅ Database cleared.');
+
         // 1. Create Roles
         const roleData = [
             { role_name: 'superadmin', description: 'System Owner - Can manage users' },
