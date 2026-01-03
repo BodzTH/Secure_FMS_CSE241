@@ -64,6 +64,7 @@ const listFiles = async (req, res) => {
 
 const path = require('path');
 const fs = require('fs');
+const { decryptBuffer } = require('../utils/fileCrypto');
 
 // @desc    Download a file
 // @route   GET /api/files/download/:id
@@ -77,12 +78,6 @@ const downloadFile = async (req, res) => {
         }
 
         // Check permissions
-        // We need to re-fetch or assume role is populated on req.user from 'protect' middleware.
-        // The 'findAccessibleByUser' method works on a query, but here we already found the specific file.
-        // So we manually check:
-        // 1. Is user admin/superadmin?
-        // 2. Is user the owner?
-        
         const isOwner = file.owner_id.toString() === req.user._id.toString();
         const isAdmin = req.user.role && (req.user.role.role_name === 'admin' || req.user.role.role_name === 'superadmin');
 
@@ -98,7 +93,19 @@ const downloadFile = async (req, res) => {
             return res.status(404).json({ message: 'File not found on server' });
         }
 
-        res.download(filePath, file.original_name);
+        // Read encrypted file and decrypt
+        const encryptedBuffer = fs.readFileSync(filePath);
+        const decryptedBuffer = decryptBuffer(encryptedBuffer);
+
+        console.log(`✅ File decrypted successfully: ${file.original_name}`);
+
+        // Set headers for download
+        res.setHeader('Content-Disposition', `attachment; filename="${file.original_name}"`);
+        res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
+        res.setHeader('Content-Length', decryptedBuffer.length);
+
+        // Send decrypted file
+        res.send(decryptedBuffer);
     } catch (error) {
         console.error('Download error:', error);
         res.status(500).json({ message: 'Server error during file download' });

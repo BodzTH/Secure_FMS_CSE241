@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -12,7 +13,11 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await login(email, password);
+    try {
+      await login(email, password);
+    } catch (err) {
+      // Error is handled by AuthContext
+    }
   };
 
   return (
@@ -93,9 +98,18 @@ export default function LoginPage() {
             disabled={isLoading}
             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 disabled:bg-blue-800 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
           >
-            {isLoading ? 'Authenticating...' : 'Sign In'}
+            {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+
+        <div className="mt-6 text-center">
+          <Link 
+            href="/forgot-password" 
+            className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            Forgot your password?
+          </Link>
+        </div>
       </div>
     </div>
   );

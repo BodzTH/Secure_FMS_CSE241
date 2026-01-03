@@ -59,6 +59,19 @@ const seedDB = async () => {
         });
         console.log('   ✅ Created User: "superadmin" (Password: "admin123")');
 
+        // 3. Create Test User with Gmail
+        const userRole = await Role.findOne({ role_name: 'user' });
+        await User.deleteOne({ email: 'ahmedmhassany16@gmail.com' });
+        
+        await User.create({
+            username: 'ahmed',
+            email: 'ahmedmhassany16@gmail.com',
+            password: 'test123',
+            role: userRole._id,
+            is_active: true
+        });
+        console.log('   ✅ Created User: "ahmed" (Email: "ahmedmhassany16@gmail.com", Password: "test123")');
+
         console.log('✨ Database seeding complete!');
         process.exit(0);
     } catch (error) {
